@@ -27,7 +27,7 @@ def play_game():
     random.shuffle(deck)  # Shuffle deck randomly
 
     # Ask user for number of human players
-    num_humans = int(input("Enter the number of human players (1-3): "))
+    num_humans = int(input("How many human players? (1-3): "))
     human_names = []
     for i in range(num_humans):
         name = input(f"Enter name for Player {i+1}: ")
@@ -49,8 +49,8 @@ def play_game():
     for idx, name in enumerate(player_names):
         print(f"Player {idx + 1}: {name}")
 
-    # Main game loop: continue as long as all players have cards
-    while all(hands):
+    # Main game loop: continue as long as at least two players have cards
+    while sum(1 for hand in hands if hand) > 1:
         current_player = hands[turn % num_players]
         current_name = player_names[turn % num_players]
 
@@ -70,7 +70,7 @@ def play_game():
         if can_slap(pile):
             slapped = False
             for idx, name in enumerate(player_names):
-                if name != "CPU Player":
+                if name != "CPU Player" and hands[idx]:
                     slap = input(f"{name}, type 'slap' to take the pile, or press Enter to skip: ")
                     if slap.lower() == 'slap':
                         print(f"{name} slaps and takes the pile! ({len(pile)} cards)")
@@ -84,11 +84,12 @@ def play_game():
                 cpu_decision = random.choice([True, False])
                 if cpu_decision:
                     cpu_idx = player_names.index("CPU Player")
-                    print(f"CPU Player slaps and takes the pile! ({len(pile)} cards)")
-                    hands[cpu_idx].extend(pile)
-                    pile.clear()
-                    turn = cpu_idx
-                    continue
+                    if hands[cpu_idx]:
+                        print(f"CPU Player slaps and takes the pile! ({len(pile)} cards)")
+                        hands[cpu_idx].extend(pile)
+                        pile.clear()
+                        turn = cpu_idx
+                        continue
 
         # Face-card challenge logic
         if card_played[0] in FACE_CARDS:
