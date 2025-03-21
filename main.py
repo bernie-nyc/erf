@@ -26,82 +26,99 @@ def play_game():
     deck = create_deck()  # Generate a fresh deck
     random.shuffle(deck)  # Shuffle deck randomly
 
-    # Split deck into two halves for player and computer
-    human_player = deque(deck[:26])
-    computer_player = deque(deck[26:])
+    # Ask user for number of human players
+    num_humans = int(input("Enter the number of human players (1-3): "))
+    human_names = []
+    for i in range(num_humans):
+        name = input(f"Enter name for Player {i+1}: ")
+        human_names.append(name)
+
+    # Assign CPU player
+    player_names = human_names + ["CPU Player"]
+    num_players = len(player_names)
+
+    # Distribute deck among players
+    hands = [deque() for _ in range(num_players)]
+    for idx, card in enumerate(deck):
+        hands[idx % num_players].append(card)
+
     pile = deque()  # Cards played in the middle
+    turn = 0
 
-    players = [human_player, computer_player]
-    turn = 0  # 0 for human, 1 for computer
+    print("\nGame Start!")
+    for idx, name in enumerate(player_names):
+        print(f"Player {idx + 1}: {name}")
 
-    print("Game Start! You are Player 1, and the computer is Player 2.")
+    # Main game loop: continue as long as all players have cards
+    while all(hands):
+        current_player = hands[turn % num_players]
+        current_name = player_names[turn % num_players]
 
-    # Main game loop: continue as long as both players have cards
-    while all(players):
-        current_player = players[turn % 2]
-        opponent_player = players[(turn + 1) % 2]
-
-        # Check if current player has cards left
         if not current_player:
-            break
+            turn += 1
+            continue
 
-        # Human player's turn
-        if turn % 2 == 0:
-            input("Press Enter to play your next card...")
+        if current_name != "CPU Player":
+            input(f"{current_name}, press Enter to play your next card...")
 
         # Draw card from current player's hand
         card_played = current_player.popleft()
         pile.append(card_played)
-        print(f"Player {turn % 2 + 1} plays: {card_played[0]} of {card_played[1]}")
+        print(f"{current_name} plays: {card_played[0]} of {card_played[1]}")
 
         # Check if anyone can slap the pile
         if can_slap(pile):
-            if turn % 2 == 0:
-                slap = input("Slap opportunity! Type 'slap' to take the pile, or press Enter to skip: ")
-                if slap.lower() == 'slap':
-                    winner = 0
-                else:
-                    winner = 1
-            else:
-                winner = random.choice([0, 1])  # Computer randomly decides to slap
+            slapped = False
+            for idx, name in enumerate(player_names):
+                if name != "CPU Player":
+                    slap = input(f"{name}, type 'slap' to take the pile, or press Enter to skip: ")
+                    if slap.lower() == 'slap':
+                        print(f"{name} slaps and takes the pile! ({len(pile)} cards)")
+                        hands[idx].extend(pile)
+                        pile.clear()
+                        turn = idx  # Slap winner takes next turn
+                        slapped = True
+                        break
 
-            print(f"Player {winner + 1} slaps and takes the pile! ({len(pile)} cards)")
-            players[winner].extend(pile)
-            pile.clear()
-            turn = winner  # Player who won slap takes next turn
-            continue
+            if not slapped:
+                cpu_decision = random.choice([True, False])
+                if cpu_decision:
+                    cpu_idx = player_names.index("CPU Player")
+                    print(f"CPU Player slaps and takes the pile! ({len(pile)} cards)")
+                    hands[cpu_idx].extend(pile)
+                    pile.clear()
+                    turn = cpu_idx
+                    continue
 
         # Face-card challenge logic
         if card_played[0] in FACE_CARDS:
-            penalty = FACE_CARDS[card_played[0]]  # Number of cards opponent must play
+            penalty = FACE_CARDS[card_played[0]]
             successful = False
+            next_player_idx = (turn + 1) % num_players
 
             # Opponent plays penalty cards
-            while penalty > 0 and opponent_player:
-                penalty_card = opponent_player.popleft()
+            while penalty > 0 and hands[next_player_idx]:
+                penalty_card = hands[next_player_idx].popleft()
                 pile.append(penalty_card)
-                print(f"Player {(turn + 1) % 2 + 1} penalty plays: {penalty_card[0]} of {penalty_card[1]}")
+                print(f"{player_names[next_player_idx]} penalty plays: {penalty_card[0]} of {penalty_card[1]}")
 
-                # If opponent plays a face card, challenge reverses
                 if penalty_card[0] in FACE_CARDS:
-                    turn += 1  # Opponent now challenges
+                    turn = next_player_idx
                     successful = True
                     break
 
                 penalty -= 1
 
-            # If no face card played, challenger wins the pile
             if not successful:
-                print(f"Player {turn % 2 + 1} wins pile due to unsuccessful face-card challenge! ({len(pile)} cards)")
+                print(f"{current_name} wins pile due to unsuccessful face-card challenge! ({len(pile)} cards)")
                 current_player.extend(pile)
                 pile.clear()
 
-        # Alternate turns
         turn += 1
 
     # Determine and announce the game winner
-    winner = "1 (You)" if human_player else "2 (Computer)"
-    print(f"Player {winner} wins the game!")
+    winner_idx = hands.index(max(hands, key=len))
+    print(f"{player_names[winner_idx]} wins the game!")
 
 # Start the game
 if __name__ == "__main__":
